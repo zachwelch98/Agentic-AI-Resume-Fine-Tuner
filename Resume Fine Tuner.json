@@ -1,0 +1,563 @@
+{
+  "name": "Resume Fine Tuner",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d00cc69b-2e8d-45e9-8a2b-5bb2ee052524",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "documentURL": "1VuvPlQmuqLLMQn2mY-gc_38x7Lo4hqLzGlK6pzwAEvk"
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "1aacfd73-a38e-4343-adbf-0422d2c3b716",
+      "name": "Read Resume",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "MK9WhVpwoU7DSDjh",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "11aCAdUrygss6YNc2gWpgX7GWERXxzcjZNlsMqE3l2Z4",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Job Applications",
+          "mode": "name"
+        },
+        "options": {
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A:D"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        0
+      ],
+      "id": "ff840a97-cce2-435b-a0d5-94626a20fd45",
+      "name": "Read All Job Rows",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YNLBRpgCvFPft5KE",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        624,
+        0
+      ],
+      "id": "1b01104e-1023-4615-8e53-cc1529aab4dd",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json[\"Job URL\"] }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1056,
+        208
+      ],
+      "id": "bfe79290-e724-44b7-909a-d101cdc69994",
+      "name": "HTTP Request",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d763897d-82d3-4e23-a852-9a23c0acb230",
+              "leftValue": "={{ $json[\"data\"] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1248,
+        208
+      ],
+      "id": "f15aea89-6c47-4efa-872f-2679e4e07d86",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2dd30ac6-4365-435b-b8ff-b919cd900272",
+              "name": "job_description",
+              "value": "=jobDescription = {{ $('Read All Job Rows').item.json[\"Job Description\"] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1472,
+        304
+      ],
+      "id": "fcf8a27a-e027-4ab5-a1ee-2f5988e5f24a",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1680,
+        208
+      ],
+      "id": "84ea7f14-7646-465f-b07f-ed0e4a6c3eab",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1856,
+        416
+      ],
+      "id": "10098140-9346-43b8-955c-06671f0cccb5",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "uKraxpGMRgQ3ckyH",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function cleanText(value) {\n  if (!value) return \"\";\n  let text = String(value);\n  \n  // If it's an array, join with line breaks\n  if (Array.isArray(value)) {\n    return value.join('\\n');\n  }\n  \n  // Remove surrounding brackets and quotes\n  text = text.replace(/^\\[\"|\"\\]$/g, '');\n  text = text.replace(/^\\[|]$/g, '');\n  // Convert array-style items into line breaks\n  text = text.replace(/\",\\s*\"/g, '\\n');\n  // Clean up escaped quotes\n  text = text.replace(/\\\\\"/g, '\"');\n  text = text.replace(/^\"|\"$/g, '');\n  // Convert literal \\n to actual line breaks\n  text = text.replace(/\\\\n/g, '\\n');\n  // Add line break before bullet points and numbered items\n  text = text.replace(/([^\\n])(\\n?- )/g, '$1\\n- ');\n  text = text.replace(/([^\\n])(\\n?\\d+\\. )/g, '$1\\n$2');\n  // Add line break before \"• \" bullets\n  text = text.replace(/([^\\n])(• )/g, '$1\\n• ');\n  // Clean up any double line breaks\n  text = text.replace(/\\n{3,}/g, '\\n\\n');\n  // Trim leading/trailing whitespace\n  return text.trim();\n}\n\nlet parsed;\ntry {\n  const aiResponse = $input.first().json.text || $input.first().json.response || $input.first().json.output;\n  const cleanResponse = aiResponse.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  parsed = JSON.parse(cleanResponse);\n} catch (e) {\n  parsed = {\n    alignment_score: \"Error\",\n    score_rationale: \"Could not parse AI response\",\n    keywords: \"\",\n    strengths: \"\",\n    improve_strengths: \"\",\n    weaknesses: \"\",\n    improve_weaknesses: \"\",\n    tailoring_suggestions: \"\"\n  };\n}\n\nreturn [{\n  json: {\n    job_url: $('Read All Job Rows').item.json[\"Job URL\"] || \"\",\n    alignment_score: String(parsed.alignment_score),\n    score_rationale: cleanText(parsed.score_rationale),\n    keywords: cleanText(parsed.keywords),\n    strengths: cleanText(parsed.strengths),\n    improve_strengths: cleanText(parsed.improve_strengths),\n    weaknesses: cleanText(parsed.weaknesses),\n    improve_weaknesses: cleanText(parsed.improve_weaknesses),\n    tailoring_suggestions: cleanText(parsed.tailoring_suggestions)\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2208,
+        208
+      ],
+      "id": "71588263-7a15-4349-b060-abb1cc0f19a6",
+      "name": "Parse AI Response"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=JOB POSTING:\nTitle: {{ $('Read All Job Rows').item.json[\"Job Title\"] }}\nCompany: {{ $('Read All Job Rows').item.json[\"Company\"] }}\nURL: {{ $('Read All Job Rows').item.json[\"Job URL\"] }}\n\nRESUME:\n{{ $('Read Resume').item.json[\"content\"] }}\n\nDescription:\n{{ $json[\"data\"] || $json[\"jobDescription\"] || $('Node 3 - Google Sheets').item.json[\"Job Description\"] }}",
+        "options": {
+          "systemMessage": "You are a brutally honest career strategist and resume critic. You do not sugarcoat. You give direct, tactical, actionable feedback that a candidate can implement today. Vague advice like \"quantify your achievements\" is useless — instead, tell them exactly what to quantify, how to phrase it, and where to put it.\n\nYou will be given a candidate's resume and a job posting. Analyze the match and respond in the following JSON format exactly:\n\n{\n  \"alignment_score\": <number 1-10>,\n  \"score_rationale\": \"<one sentence explaining the score — be blunt about what's dragging it down or pushing it up>\",\n  \"keywords\": \"<comma-separated list of critical keywords and skills from the job posting that an ATS will scan for>\",\n  \"strengths\": \"<bullet-pointed list of specific resume elements that match the job — cite exact phrases from the resume and explain WHY they're strong for this role>\",\n  \"improve_strengths\": \"<for each strength, give a specific rewrite or enhancement — don't just say 'expand on this', provide the actual improved bullet point or phrasing>\",\n  \"weaknesses\": \"<bullet-pointed list of specific gaps, missing skills, missing keywords, and mismatches — call out exactly what's missing and why it matters for this role>\",\n  \"improve_weaknesses\": \"<for each weakness, provide a concrete fix — if they lack a skill, suggest how to frame adjacent experience to cover it; if a keyword is missing, show exactly where and how to add it>\",\n  \"tailoring_suggestions\": \"<numbered list of the top 5 highest-impact changes to make this resume competitive for this specific role — each should be a specific action like 'Change your summary from X to Y' or 'Add a bullet under [Job] that says [exact text]'>\"\n}\n\nScoring guide — be harsh and honest:\n- 9-10: Near-perfect match. Candidate could get an interview tomorrow. Reserve this for exceptional alignment.\n- 7-8: Strong match with minor gaps. Fixable with a few targeted edits.\n- 5-6: Decent foundation but meaningful gaps. Needs real work to be competitive.\n- 3-4: Weak match. Major missing qualifications or experience misalignment.\n- 1-2: Wrong fit. Resume does not support this application.\n\nRules:\n- Never give generic advice. Every suggestion must reference specific content from the resume or job posting.\n- If the resume is missing a critical requirement, say so directly. Do not soften it.\n- Prioritize ATS optimization — flag missing keywords that will get the resume filtered out before a human sees it.\n- When suggesting improvements, write the actual copy the candidate should use, not a description of what to write.\n- Be specific about WHERE in the resume each change should go.\n- Use \\n for line breaks within each field. Start each bullet point on a new line with \"- \" prefix.\n\nRespond ONLY with the JSON object. No additional text.",
+          "enableStreaming": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1856,
+        208
+      ],
+      "id": "2f2b5ce2-db03-4d5e-860a-84fcd8389358",
+      "name": "Analyze Resume vs. Job"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "11aCAdUrygss6YNc2gWpgX7GWERXxzcjZNlsMqE3l2Z4",
+          "mode": "list",
+          "cachedResultName": "Job Apps Analysis",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11aCAdUrygss6YNc2gWpgX7GWERXxzcjZNlsMqE3l2Z4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Job Applications",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11aCAdUrygss6YNc2gWpgX7GWERXxzcjZNlsMqE3l2Z4/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Alignment Score": "={{ $json.alignment_score }}",
+            "Score Rationale": "={{ $json.score_rationale }}",
+            "Keywords": "={{ $json.keywords }}",
+            "Strengths": "={{ $json.strengths }}",
+            "Improve Strengths": "={{ $json.improve_strengths }}",
+            "Weaknesses": "={{ $json.weaknesses }}",
+            "Improve Weaknesses": "={{ $json.improve_weaknesses }}",
+            "Tailoring Suggestions": "={{ $json.tailoring_suggestions }}",
+            "Job URL": "={{ $json.job_url}}"
+          },
+          "matchingColumns": [
+            "Job URL"
+          ],
+          "schema": [
+            {
+              "id": "Job Title",
+              "displayName": "Job Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Job URL",
+              "displayName": "Job URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Job Description",
+              "displayName": "Job Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Alignment Score",
+              "displayName": "Alignment Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score Rationale",
+              "displayName": "Score Rationale",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Keywords",
+              "displayName": "Keywords",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Strengths",
+              "displayName": "Strengths",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Improve Strengths",
+              "displayName": "Improve Strengths",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Weaknesses",
+              "displayName": "Weaknesses",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Improve Weaknesses",
+              "displayName": "Improve Weaknesses",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tailoring Suggestions",
+              "displayName": "Tailoring Suggestions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2416,
+        208
+      ],
+      "id": "c7dbb9e8-a25e-41f0-98e1-a39318b6aa7d",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YNLBRpgCvFPft5KE",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Read Resume",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Resume": {
+      "main": [
+        [
+          {
+            "node": "Read All Job Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read All Job Rows": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Analyze Resume vs. Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Analyze Resume vs. Job",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Resume vs. Job": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "ed26495e-1e85-4262-b2fa-2283808b600b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9b94d9ff22dc6101175a793959da086209bfb39debb275400e0c72e2225740c2"
+  },
+  "id": "pjRNQDf7YjxCnm3cs_H7M",
+  "tags": []
+}
